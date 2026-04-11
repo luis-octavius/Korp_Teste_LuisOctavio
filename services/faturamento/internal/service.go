@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
+
+	db "github.com/luis-octavius/Korp_Teste_Luis_Octavio/services/faturamento/db/gen"
 )
 
 type FaturamentoService interface {
@@ -72,7 +74,7 @@ func (s *faturamentoService) AdicionarItens(ctx context.Context, req AdicionarIt
 			return fmt.Errorf("service.AdicionarItens: produto_id inválido %s: %w", item.ProdutoID, err)
 		}
 
-		_, err = s.repo.AdicionarItemNota(ctx, AdicionarItemNotaParams{
+		_, err = s.repo.AdicionarItemNota(ctx, db.AdicionarItemNotaParams{
 			NotaID:     notaUUID,
 			ProdutoID:  produtoUUID,
 			Quantidade: item.Quantidade,
@@ -113,12 +115,32 @@ func (s *faturamentoService) BuscarNota(ctx context.Context, id string) (*NotaDe
 		resp.PrintedAt = &t
 	}
 
+	cache := make(map[string]*EstoqueProdutoResponse)
+
 	for i, item := range items {
+		produtoID := uuidToString(item.ProdutoID.Bytes)
+
+		produto, ok := cache[produtoID]
+		if !ok {
+			p, err := s.buscarProduto(ctx, produtoID)
+			if err != nil {
+				fmt.Printf("WARN: service.BuscarNota: não foi possível buscar nome do produto %s: %v\n", produtoID, err)
+			} else {
+				cache[produtoID] = p
+				produto = p
+			}
+		}
+
+		nomeProduto := ""
+		if produto != nil {
+			nomeProduto = produto.Nome
+		}
+
 		resp.Items[i] = ItemNotaResponse{
 			ID:          uuidToString(item.ID.Bytes),
 			ProdutoID:   uuidToString(item.ProdutoID.Bytes),
 			Quantidade:  item.Quantidade,
-			ProdutoNome: item.ProdutoNome,
+			ProdutoNome: nomeProduto,
 		}
 	}
 
@@ -273,6 +295,40 @@ func (s *faturamentoService) rollbackDebitos(
 			fmt.Printf("WARN: rollback retornou status %d para produto %s\n", resp.StatusCode, d.ProdutoID)
 		}
 	}
+}
+
+// ─── Estoque ───────────────────────────────────────────────────────────────
+func (s *faturamentoService) buscarProduto(ctx context.Context, produtoID string) (*EstoqueProdutoResponse, error) {
+	httpReq, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodGet,
+		s.estoqueURL+"/produtos/"+produtoID,
+		nil,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("buscarProduto: erro ao criar request: %w", err)
+	}
+
+	resp, err := s.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("buscarProduto: serviço de estoque indisponível: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("buscarProduto: estoque retornou status %d", resp.Status)
+	}
+
+	if resp.StatusCode == http.StatusOK {
+		return nil, fmt.Errorf("buscarProduto: estoque retornou status %d", resp.Status)
+	}
+
+	var produto EstoqueProdutoResponse
+	if err := json.NewDecoder(resp.Body).Decode(&produto); err != nil {
+		return nil, fmt.Errorf("buscarProduto: erro ao decodificar resposta: %w", err)
+	}
+
+	return &produto, nil
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
