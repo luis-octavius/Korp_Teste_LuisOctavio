@@ -18,6 +18,8 @@ func NewFaturamentoHandler(service FaturamentoService) *FaturamentoHandler {
 }
 
 func (h *FaturamentoHandler) RegisterRoutes(r chi.Router) {
+	r.Get("/health", h.Health)
+
 	r.Route("/notas", func(r chi.Router) {
 		r.Post("/", h.CriarNota)
 		r.Get("/", h.ListarNotas)
@@ -25,6 +27,11 @@ func (h *FaturamentoHandler) RegisterRoutes(r chi.Router) {
 		r.Post("/{id}/itens", h.AdicionarItens)
 		r.Post("/{id}/imprimir", h.ImprimirNota)
 	})
+}
+
+// GET /health
+func (h *FaturamentoHandler) Health(w http.ResponseWriter, r *http.Request) {
+	respondJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 // POST /notas

@@ -18,6 +18,8 @@ func NewEstoqueHandler(service EstoqueService) *EstoqueHandler {
 }
 
 func (h *EstoqueHandler) RegisterRoutes(r chi.Router) {
+	r.Get("/health", h.Health)
+
 	r.Route("/produtos", func(r chi.Router) {
 		r.Post("/", h.CriarProduto)
 		r.Get("/", h.ListarProdutos)
@@ -28,6 +30,11 @@ func (h *EstoqueHandler) RegisterRoutes(r chi.Router) {
 		r.Post("/debitar", h.DebitarEstoque)
 		r.Post("/reverter", h.ReverterDebito)
 	})
+}
+
+// GET /health
+func (h *EstoqueHandler) Health(w http.ResponseWriter, r *http.Request) {
+	respondJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 // POST /produtos
