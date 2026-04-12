@@ -28,20 +28,21 @@ e, se necessário, reverter o saldo dos produtos no momento da impressão.
 
 | Variável | Descrição | Exemplo |
 |---|---|---|
-| `DATABASE_URL` | String de conexão com o PostgreSQL | `postgres://user:pass@localhost:5432/korp?search_path=faturamento` |
+| `DATABASE_URL` | String de conexão com o PostgreSQL | `postgres://korp:korp@localhost:5433/korp?sslmode=disable` |
 | `PORT` | Porta do servidor HTTP | `8081` |
 | `ESTOQUE_SERVICE_URL` | URL base do serviço de estoque | `http://estoque:8080` |
 
 ### Banco de dados
 
 O serviço utiliza o schema `faturamento` dentro de um PostgreSQL compartilhado.
+As tabelas são criadas automaticamente pelo `db/init.sql` na raiz do projeto.
 
-Para rodar as migrations manualmente:
+Para rodar as migrations manualmente fora do Docker:
 
 ```bash
-psql $DATABASE_URL -f db/migrations/001_init_schema.sql
-psql $DATABASE_URL -f db/migrations/002_create_notas.sql
-psql $DATABASE_URL -f db/migrations/003_create_nota_items.sql
+psql $DATABASE_URL -f db/migrations/004_faturamento_init_schema.sql
+psql $DATABASE_URL -f db/migrations/005_faturamento_create_notas.sql
+psql $DATABASE_URL -f db/migrations/006_faturamento_create_nota_items.sql
 ```
 
 ## Rodando localmente
@@ -51,7 +52,7 @@ psql $DATABASE_URL -f db/migrations/003_create_nota_items.sql
 go mod download
 
 # Rodar o serviço (requer o serviço de estoque rodando)
-DATABASE_URL="postgres://user:pass@localhost:5432/korp" \
+DATABASE_URL="postgres://korp:korp@localhost:5433/korp?sslmode=disable" \
 PORT=8081 \
 ESTOQUE_SERVICE_URL="http://localhost:8080" \
 go run cmd/main.go
@@ -59,10 +60,18 @@ go run cmd/main.go
 
 ## Rodando com Docker
 
+O modo recomendado é via Docker Compose na raiz do projeto:
+
+```bash
+docker-compose up --build
+```
+
+Para build isolado:
+
 ```bash
 docker build -t korp-faturamento .
 docker run -p 8081:8081 \
-  -e DATABASE_URL="postgres://user:pass@localhost:5432/korp" \
+  -e DATABASE_URL="postgres://korp:korp@localhost:5433/korp?sslmode=disable" \
   -e ESTOQUE_SERVICE_URL="http://estoque:8080" \
   korp-faturamento
 ```
@@ -71,13 +80,25 @@ docker run -p 8081:8081 \
 
 | Método | Rota | Descrição |
 |---|---|---|
+| `GET` | `/health` | Health check do serviço |
 | `POST` | `/notas` | Criar nova nota fiscal |
 | `GET` | `/notas` | Listar notas fiscais |
-| `GET` | `/notas/{id}` | Buscar nota por ID |
+| `GET` | `/notas/{id}` | Buscar nota com itens |
 | `POST` | `/notas/{id}/itens` | Adicionar itens à nota |
 | `POST` | `/notas/{id}/imprimir` | Imprimir nota e debitar estoque |
 
 ## Exemplos de requisição
+
+### Health check
+
+```bash
+curl http://localhost:8081/health
+```
+
+**Resposta:**
+```json
+{ "status": "ok" }
+```
 
 ### Criar nota fiscal
 
@@ -109,9 +130,7 @@ curl -X POST http://localhost:8081/notas/f3b2c4d5-.../itens \
 
 **Resposta:**
 ```json
-{
-  "mensagem": "itens adicionados com sucesso"
-}
+{ "mensagem": "itens adicionados com sucesso" }
 ```
 
 ### Imprimir nota
@@ -126,8 +145,18 @@ curl -X POST http://localhost:8081/notas/f3b2c4d5-.../imprimir
   "id": "f3b2c4d5-...",
   "num_seq": 1,
   "status": "FECHADA",
-  "printed_at": "2025-04-11T14:32:00Z"
+  "printed_at": "2026-04-12T14:32:00Z"
 }
+```
+
+**Erro — nota já fechada:**
+```json
+{ "erro": "service.ImprimirNota: nota já foi fechada ou impressa" }
+```
+
+**Erro — saldo insuficiente com rollback:**
+```json
+{ "erro": "service.ImprimirNota: falha ao debitar produto e2a1b3c4-...: ..." }
 ```
 
 ### Buscar nota com itens
@@ -142,8 +171,8 @@ curl http://localhost:8081/notas/f3b2c4d5-...
   "id": "f3b2c4d5-...",
   "num_seq": 1,
   "status": "FECHADA",
-  "created_at": "2025-04-11T14:30:00Z",
-  "printed_at": "2025-04-11T14:32:00Z",
+  "created_at": "2026-04-12T14:30:00Z",
+  "printed_at": "2026-04-12T14:32:00Z",
   "items": [
     {
       "id": "c1d2e3f4-...",

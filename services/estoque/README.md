@@ -12,9 +12,9 @@ Microsserviço responsável pelo controle de produtos e saldos em estoque.
 ## Responsabilidades
 
 - Cadastro e consulta de produtos
-- Débito atômico de estoque
-- Reversão de débito (estorno)
-- Registro de movimentações
+- Débito atômico de estoque via `UPDATE ... WHERE saldo >= quantidade`
+- Reversão de débito (estorno) em caso de falha no faturamento
+- Registro de movimentações (`ENTRADA`, `SAIDA`, `AJUSTE`, `ESTORNO`)
 
 ## Configuração
 
@@ -22,19 +22,20 @@ Microsserviço responsável pelo controle de produtos e saldos em estoque.
 
 | Variável | Descrição | Exemplo |
 |---|---|---|
-| `DATABASE_URL` | String de conexão com o PostgreSQL | `postgres://user:pass@localhost:5432/korp?search_path=estoque` |
+| `DATABASE_URL` | String de conexão com o PostgreSQL | `postgres://korp:korp@localhost:5433/korp?sslmode=disable` |
 | `PORT` | Porta do servidor HTTP | `8080` |
 
 ### Banco de dados
 
 O serviço utiliza o schema `estoque` dentro de um PostgreSQL compartilhado.
+As tabelas são criadas automaticamente pelo `db/init.sql` na raiz do projeto.
 
-Para rodar as migrations manualmente:
+Para rodar as migrations manualmente fora do Docker:
 
 ```bash
-psql $DATABASE_URL -f db/migrations/001_init_schema.sql
-psql $DATABASE_URL -f db/migrations/002_create_produtos.sql
-psql $DATABASE_URL -f db/migrations/003_create_movimentacoes.sql
+psql $DATABASE_URL -f db/migrations/001_estoque_init_schema.sql
+psql $DATABASE_URL -f db/migrations/002_estoque_create_produtos.sql
+psql $DATABASE_URL -f db/migrations/003_estoque_create_movimentacoes.sql
 ```
 
 ## Rodando localmente
@@ -44,15 +45,25 @@ psql $DATABASE_URL -f db/migrations/003_create_movimentacoes.sql
 go mod download
 
 # Rodar o serviço
-DATABASE_URL="postgres://user:pass@localhost:5432/korp" PORT=8080 go run cmd/main.go
+DATABASE_URL="postgres://korp:korp@localhost:5433/korp?sslmode=disable" \
+PORT=8080 \
+go run cmd/main.go
 ```
 
 ## Rodando com Docker
 
+O modo recomendado é via Docker Compose na raiz do projeto:
+
+```bash
+docker-compose up --build
+```
+
+Para build isolado:
+
 ```bash
 docker build -t korp-estoque .
 docker run -p 8080:8080 \
-  -e DATABASE_URL="postgres://user:pass@localhost:5432/korp" \
+  -e DATABASE_URL="postgres://korp:korp@localhost:5433/korp?sslmode=disable" \
   korp-estoque
 ```
 
@@ -62,6 +73,7 @@ docker run -p 8080:8080 \
 
 | Método | Rota | Descrição |
 |---|---|---|
+| `GET` | `/health` | Health check do serviço |
 | `POST` | `/produtos` | Cadastrar produto |
 | `GET` | `/produtos` | Listar produtos |
 | `GET` | `/produtos/{id}` | Buscar produto por ID |
@@ -76,6 +88,17 @@ docker run -p 8080:8080 \
 | `POST` | `/estoque/reverter` | Reverter débito (estorno) |
 
 ## Exemplos de requisição
+
+### Health check
+
+```bash
+curl http://localhost:8080/health
+```
+
+**Resposta:**
+```json
+{ "status": "ok" }
+```
 
 ### Cadastrar produto
 
@@ -100,6 +123,12 @@ curl -X POST http://localhost:8080/produtos \
 curl http://localhost:8080/produtos
 ```
 
+### Buscar produto por ID
+
+```bash
+curl http://localhost:8080/produtos/e2a1b3c4-...
+```
+
 ### Debitar estoque
 
 ```bash
@@ -119,6 +148,31 @@ curl -X POST http://localhost:8080/estoque/debitar \
   "produto_id": "e2a1b3c4-...",
   "novo_saldo": 8
 }
+```
+
+**Erro — saldo insuficiente:**
+```json
+{
+  "erro": "service.DebitarEstoque: saldo insuficiente ou produto inexistente"
+}
+```
+
+### Reverter débito
+
+```bash
+curl -X POST http://localhost:8080/estoque/reverter \
+  -H "Content-Type: application/json" \
+  -d '{
+    "produto_id": "e2a1b3c4-...",
+    "quantidade": 2,
+    "nota_id": "f3b2c4d5-...",
+    "nota_num": 1
+  }'
+```
+
+**Resposta:**
+```json
+{ "mensagem": "estorno realizado com sucesso" }
 ```
 
 ## Geração de código (sqlc)
