@@ -316,11 +316,11 @@ func (s *faturamentoService) buscarProduto(ctx context.Context, produtoID string
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound {
-		return nil, fmt.Errorf("buscarProduto: estoque retornou status %d", resp.Status)
+		return nil, fmt.Errorf("buscarProduto: estoque retornou status %s", resp.Status)
 	}
 
 	if resp.StatusCode == http.StatusOK {
-		return nil, fmt.Errorf("buscarProduto: estoque retornou status %d", resp.Status)
+		return nil, fmt.Errorf("buscarProduto: estoque retornou status %s", resp.Status)
 	}
 
 	var produto EstoqueProdutoResponse
