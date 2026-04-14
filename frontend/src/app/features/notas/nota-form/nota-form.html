@@ -1,0 +1,92 @@
+<div class="page-header">
+  <button mat-icon-button (click)="cancelar()">
+    <mat-icon>arrow_back</mat-icon>
+  </button>
+  <h1 class="page-title">Adicionar Itens à Nota</h1>
+</div>
+
+<div class="form-layout">
+  <!-- ─── Formulário de item ─────────────────────────────────────────────── -->
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>Selecionar Produto</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      @if (carregandoProdutos) {
+      <app-loading-spinner [visivel]="true" mensagem="Carregando produtos..." />
+      } @else {
+      <form [formGroup]="itemForm" (ngSubmit)="adicionarItem()">
+        <mat-form-field appearance="outline" class="campo">
+          <mat-label>Produto</mat-label>
+          <mat-select formControlName="produto_id">
+            @for (produto of produtos; track produto.id) {
+            <mat-option [value]="produto.id" [disabled]="produto.saldo === 0">
+              {{ produto.nome }} — {{ produto.saldo }} un. disponíveis
+            </mat-option>
+            }
+          </mat-select>
+          @if (itemForm.get('produto_id')?.hasError('duplicado')) {
+          <mat-error>Produto já adicionado</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="campo">
+          <mat-label>Quantidade</mat-label>
+          <input matInput type="number" formControlName="quantidade" min="1" />
+          @if (itemForm.get('quantidade')?.invalid && itemForm.get('quantidade')?.touched) {
+          <mat-error>Quantidade deve ser maior que zero</mat-error>
+          }
+        </mat-form-field>
+
+        <button mat-stroked-button color="primary" type="submit" [disabled]="itemForm.invalid">
+          <mat-icon>add</mat-icon>
+          Adicionar Item
+        </button>
+      </form>
+      }
+    </mat-card-content>
+  </mat-card>
+
+  <!-- ─── Lista de itens adicionados ────────────────────────────────────── -->
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>Itens da Nota ({{ itens.length }})</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      @if (itens.length === 0) {
+      <div class="empty-itens">
+        <p>Nenhum item adicionado ainda.</p>
+      </div>
+      } @else {
+      <div class="itens-lista">
+        @for (item of itens; track item.produto_id; let i = $index) {
+        <div class="item-row">
+          <span class="item-nome">{{ nomeProduto(item.produto_id) }}</span>
+          <span class="item-qtd">{{ item.quantidade }} un.</span>
+          <button mat-icon-button color="warn" (click)="removerItem(i)">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </div>
+        }
+      </div>
+      }
+    </mat-card-content>
+    <mat-card-actions align="end">
+      <button mat-stroked-button (click)="cancelar()">Cancelar</button>
+      <button
+        mat-raised-button
+        color="primary"
+        (click)="salvar()"
+        [disabled]="itens.length === 0 || salvando"
+      >
+        @if (salvando) {
+        <app-loading-spinner [visivel]="true" />
+        } @else {
+        <ng-container>
+          <mat-icon>save</mat-icon>
+        </ng-container>
+        Confirmar Itens }
+      </button>
+    </mat-card-actions>
+  </mat-card>
+</div>

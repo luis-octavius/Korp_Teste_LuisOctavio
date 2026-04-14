@@ -6,7 +6,7 @@ export const NOTAS_ROUTES: Routes = [
     loadComponent: () => import('./notas-list/notas-list').then((m) => m.NotasListComponent),
   },
   {
-    path: 'nova',
+    path: ':id/itens',
     loadComponent: () => import('./nota-form/nota-form').then((m) => m.NotaFormComponent),
   },
   {

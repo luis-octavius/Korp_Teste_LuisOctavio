@@ -1,0 +1,46 @@
+<div class="page-header">
+  <button mat-icon-button (click)="cancelar()">
+    <mat-icon>arrow_back</mat-icon>
+  </button>
+  <h1 class="page-title">Novo Produto</h1>
+</div>
+
+<mat-card class="form-card">
+  <mat-card-content>
+    <form [formGroup]="form" (ngSubmit)="salvar()">
+      <mat-form-field appearance="outline" class="campo">
+        <mat-label>Nome do produto</mat-label>
+        <input matInput formControlName="nome" placeholder="Ex: Notebook Dell" />
+        @if (form.get('nome')?.invalid && form.get('nome')?.touched) {
+        <mat-error>{{ erroNome() }}</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="campo">
+        <mat-label>Saldo em estoque</mat-label>
+        <input matInput type="number" formControlName="saldo" placeholder="0" />
+        @if (form.get('saldo')?.invalid && form.get('saldo')?.touched) {
+        <mat-error>{{ erroSaldo() }}</mat-error>
+        }
+      </mat-form-field>
+
+      <div class="form-actions">
+        <button mat-stroked-button type="button" (click)="cancelar()">Cancelar</button>
+        <button
+          mat-raised-button
+          color="primary"
+          type="submit"
+          [disabled]="form.invalid || salvando"
+        >
+          @if (salvando) {
+          <app-loading-spinner [visivel]="true" />
+          } @else {
+          <ng-container>
+            <mat-icon>save</mat-icon>
+          </ng-container>
+          Salvar }
+        </button>
+      </div>
+    </form>
+  </mat-card-content>
+</mat-card>
