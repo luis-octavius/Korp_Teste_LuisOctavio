@@ -4,13 +4,14 @@ import { Observable } from 'rxjs';
 import { catchError, throwError } from 'rxjs';
 
 import { Produto, CriarProdutoRequest } from '../models/produto.model';
+import { environment } from '../../../environments/environment';
 
 @Injectable({
   providedIn: 'root',
 })
 export class ProdutoService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = 'http://localhost:8080';
+  private readonly baseUrl = environment.api.estoqueBaseUrl;
 
   listar(): Observable<Produto[]> {
     return this.http

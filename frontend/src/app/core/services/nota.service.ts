@@ -9,13 +9,14 @@ import {
   AdicionarItensRequest,
   ImprimirNotaResponse,
 } from '../models/nota.model';
+import { environment } from '../../../environments/environment';
 
 @Injectable({
   providedIn: 'root',
 })
 export class NotaService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = 'http://localhost:8081';
+  private readonly baseUrl = environment.api.faturamentoBaseUrl;
 
   criar(): Observable<Nota> {
     return this.http
