@@ -9,6 +9,14 @@
   <mat-card-content>
     <form [formGroup]="form" (ngSubmit)="salvar()">
       <mat-form-field appearance="outline" class="campo">
+        <mat-label>Codigo do produto</mat-label>
+        <input matInput formControlName="codigo" placeholder="Ex: SKU-001" />
+        @if (form.get('codigo')?.invalid && form.get('codigo')?.touched) {
+        <mat-error>{{ erroCodigo() }}</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="campo">
         <mat-label>Nome do produto</mat-label>
         <input matInput formControlName="nome" placeholder="Ex: Notebook Dell" />
         @if (form.get('nome')?.invalid && form.get('nome')?.touched) {

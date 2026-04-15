@@ -10,7 +10,7 @@ import (
 )
 
 type EstoqueRepository interface {
-	CriarProduto(ctx context.Context, nome string, saldo int32) (*db.EstoqueProduto, error)
+	CriarProduto(ctx context.Context, codigo, nome string, saldo int32) (*db.EstoqueProduto, error)
 	ListarProdutos(ctx context.Context) ([]db.EstoqueProduto, error)
 	BuscarProdutoPorId(ctx context.Context, id pgtype.UUID) (*db.EstoqueProduto, error)
 	DebitarEstoqueAtomico(ctx context.Context, id pgtype.UUID, quantidade int32) (*db.DebitarEstoqueAtomicoRow, error)
@@ -26,10 +26,11 @@ func NewEstoqueRepository(queries *db.Queries) EstoqueRepository {
 	return &estoqueRepository{queries: queries}
 }
 
-func (r *estoqueRepository) CriarProduto(ctx context.Context, nome string, saldo int32) (*db.EstoqueProduto, error) {
+func (r *estoqueRepository) CriarProduto(ctx context.Context, codigo, nome string, saldo int32) (*db.EstoqueProduto, error) {
 	produto, err := r.queries.CriarProduto(ctx, db.CriarProdutoParams{
-		Nome:  nome,
-		Saldo: saldo,
+		Codigo: codigo,
+		Nome:   nome,
+		Saldo:  saldo,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("repository.CriarProduto: %w", err)

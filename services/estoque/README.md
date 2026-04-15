@@ -105,7 +105,7 @@ curl http://localhost:8080/health
 ```bash
 curl -X POST http://localhost:8080/produtos \
   -H "Content-Type: application/json" \
-  -d '{"nome": "Notebook Dell", "saldo": 10}'
+  -d '{"codigo": "SKU-001", "nome": "Notebook Dell", "saldo": 10}'
 ```
 
 **Resposta:**

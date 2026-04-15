@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	db "github.com/luis-octavius/Korp_Teste_Luis_Octavio/services/faturamento/db/gen"
 )
@@ -12,6 +14,7 @@ import (
 type FaturamentoRepository interface {
 	CriarNota(ctx context.Context) (*db.FaturamentoNota, error)
 	AdicionarItemNota(ctx context.Context, params db.AdicionarItemNotaParams) (*db.FaturamentoNotaItem, error)
+	AdicionarItensNotaAtomico(ctx context.Context, itens []db.AdicionarItemNotaParams) error
 	BuscarNotaPorId(ctx context.Context, id pgtype.UUID) (*db.FaturamentoNota, error)
 	BuscarNotaPorNumero(ctx context.Context, numSeq int64) (*db.FaturamentoNota, error)
 	ListarNotas(ctx context.Context) ([]db.FaturamentoNota, error)
@@ -22,10 +25,11 @@ type FaturamentoRepository interface {
 
 type faturamentoRepository struct {
 	queries *db.Queries
+	db      *pgxpool.Pool
 }
 
-func NewFaturamentoRepository(queries *db.Queries) FaturamentoRepository {
-	return &faturamentoRepository{queries: queries}
+func NewFaturamentoRepository(queries *db.Queries, pool *pgxpool.Pool) FaturamentoRepository {
+	return &faturamentoRepository{queries: queries, db: pool}
 }
 
 func (r *faturamentoRepository) CriarNota(ctx context.Context) (*db.FaturamentoNota, error) {
@@ -44,6 +48,33 @@ func (r *faturamentoRepository) AdicionarItemNota(ctx context.Context, args db.A
 	}
 
 	return &item, nil
+}
+
+func (r *faturamentoRepository) AdicionarItensNotaAtomico(ctx context.Context, itens []db.AdicionarItemNotaParams) error {
+	tx, err := r.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return fmt.Errorf("repository.AdicionarItensNotaAtomico: erro ao iniciar transação: %w", err)
+	}
+
+	defer func() {
+		if tx != nil {
+			_ = tx.Rollback(ctx)
+		}
+	}()
+
+	qtx := r.queries.WithTx(tx)
+	for _, item := range itens {
+		if _, err := qtx.AdicionarItemNota(ctx, item); err != nil {
+			return fmt.Errorf("repository.AdicionarItensNotaAtomico: erro ao inserir item: %w", err)
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("repository.AdicionarItensNotaAtomico: erro ao commitar transação: %w", err)
+	}
+
+	tx = nil
+	return nil
 }
 
 func (r *faturamentoRepository) BuscarNotaPorId(ctx context.Context, id pgtype.UUID) (*db.FaturamentoNota, error) {

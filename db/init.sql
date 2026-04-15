@@ -6,6 +6,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE TABLE IF NOT EXISTS estoque.produtos (
     id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    codigo     TEXT        NOT NULL UNIQUE,
     nome       TEXT        NOT NULL,
     saldo      INTEGER     NOT NULL DEFAULT 0 CHECK (saldo >= 0),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

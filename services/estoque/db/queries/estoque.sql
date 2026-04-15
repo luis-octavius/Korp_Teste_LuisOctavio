@@ -1,6 +1,6 @@
 -- name: CriarProduto :one 
-INSERT INTO estoque.produtos (nome, saldo)
-VALUES ($1, $2)
+INSERT INTO estoque.produtos (codigo, nome, saldo)
+VALUES ($1, $2, $3)
 RETURNING *; 
 
 -- name: ListarProdutos :many
@@ -18,10 +18,11 @@ WITH debito AS (
         updated_at = NOW()
     WHERE id = $1::uuid
         AND saldo >= $2::int
-    RETURNING id, nome, saldo, created_at, updated_at
+    RETURNING id, codigo, nome, saldo, created_at, updated_at
 )
 SELECT 
     id, 
+    codigo,
     nome, 
     saldo, 
     created_at, 

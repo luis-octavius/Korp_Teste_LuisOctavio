@@ -45,6 +45,10 @@ func (h *EstoqueHandler) CriarProduto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.Codigo == "" {
+		respondError(w, http.StatusBadRequest, "campo 'codigo' é obrigatório")
+		return
+	}
 	if req.Nome == "" {
 		respondError(w, http.StatusBadRequest, "campo 'nome' é obrigatório")
 		return

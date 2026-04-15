@@ -34,6 +34,7 @@ export class ProdutoFormComponent {
   salvando = false;
 
   form = this.fb.group({
+    codigo: ['', [Validators.required, Validators.minLength(2)]],
     nome: ['', [Validators.required, Validators.minLength(3)]],
     saldo: [0, [Validators.required, Validators.min(0)]],
   });
@@ -45,6 +46,7 @@ export class ProdutoFormComponent {
     this.cdr.detectChanges();
     this.produtoService
       .criar({
+        codigo: this.form.value.codigo!,
         nome: this.form.value.nome!,
         saldo: this.form.value.saldo!,
       })
@@ -69,6 +71,13 @@ export class ProdutoFormComponent {
     const ctrl = this.form.get('nome');
     if (ctrl?.hasError('required')) return 'Nome é obrigatório';
     if (ctrl?.hasError('minlength')) return 'Nome deve ter ao menos 3 caracteres';
+    return '';
+  }
+
+  erroCodigo(): string {
+    const ctrl = this.form.get('codigo');
+    if (ctrl?.hasError('required')) return 'Codigo e obrigatorio';
+    if (ctrl?.hasError('minlength')) return 'Codigo deve ter ao menos 2 caracteres';
     return '';
   }
 

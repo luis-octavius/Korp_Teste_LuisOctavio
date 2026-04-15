@@ -12,7 +12,7 @@ import (
 )
 
 const buscarProdutoPorId = `-- name: BuscarProdutoPorId :one
-SELECT id, nome, saldo, created_at, updated_at FROM estoque.produtos 
+SELECT id, nome, saldo, created_at, updated_at, codigo FROM estoque.produtos 
 WHERE id = $1
 `
 
@@ -25,23 +25,25 @@ func (q *Queries) BuscarProdutoPorId(ctx context.Context, id pgtype.UUID) (Estoq
 		&i.Saldo,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Codigo,
 	)
 	return i, err
 }
 
 const criarProduto = `-- name: CriarProduto :one
-INSERT INTO estoque.produtos (nome, saldo)
-VALUES ($1, $2)
-RETURNING id, nome, saldo, created_at, updated_at
+INSERT INTO estoque.produtos (codigo, nome, saldo)
+VALUES ($1, $2, $3)
+RETURNING id, nome, saldo, created_at, updated_at, codigo
 `
 
 type CriarProdutoParams struct {
-	Nome  string `json:"nome"`
-	Saldo int32  `json:"saldo"`
+	Codigo string `json:"codigo"`
+	Nome   string `json:"nome"`
+	Saldo  int32  `json:"saldo"`
 }
 
 func (q *Queries) CriarProduto(ctx context.Context, arg CriarProdutoParams) (EstoqueProduto, error) {
-	row := q.db.QueryRow(ctx, criarProduto, arg.Nome, arg.Saldo)
+	row := q.db.QueryRow(ctx, criarProduto, arg.Codigo, arg.Nome, arg.Saldo)
 	var i EstoqueProduto
 	err := row.Scan(
 		&i.ID,
@@ -49,6 +51,7 @@ func (q *Queries) CriarProduto(ctx context.Context, arg CriarProdutoParams) (Est
 		&i.Saldo,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Codigo,
 	)
 	return i, err
 }
@@ -60,10 +63,11 @@ WITH debito AS (
         updated_at = NOW()
     WHERE id = $1::uuid
         AND saldo >= $2::int
-    RETURNING id, nome, saldo, created_at, updated_at
+    RETURNING id, codigo, nome, saldo, created_at, updated_at
 )
 SELECT 
     id, 
+    codigo,
     nome, 
     saldo, 
     created_at, 
@@ -78,6 +82,7 @@ type DebitarEstoqueAtomicoParams struct {
 
 type DebitarEstoqueAtomicoRow struct {
 	ID        pgtype.UUID        `json:"id"`
+	Codigo    string             `json:"codigo"`
 	Nome      string             `json:"nome"`
 	Saldo     int32              `json:"saldo"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
@@ -89,6 +94,7 @@ func (q *Queries) DebitarEstoqueAtomico(ctx context.Context, arg DebitarEstoqueA
 	var i DebitarEstoqueAtomicoRow
 	err := row.Scan(
 		&i.ID,
+		&i.Codigo,
 		&i.Nome,
 		&i.Saldo,
 		&i.CreatedAt,
@@ -133,7 +139,7 @@ func (q *Queries) ListarMovimentacoesProduto(ctx context.Context, produtoID pgty
 }
 
 const listarProdutos = `-- name: ListarProdutos :many
-SELECT id, nome, saldo, created_at, updated_at FROM estoque.produtos
+SELECT id, nome, saldo, created_at, updated_at, codigo FROM estoque.produtos
 ORDER BY nome
 `
 
@@ -152,6 +158,7 @@ func (q *Queries) ListarProdutos(ctx context.Context) ([]EstoqueProduto, error) 
 			&i.Saldo,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Codigo,
 		); err != nil {
 			return nil, err
 		}

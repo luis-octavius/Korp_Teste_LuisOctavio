@@ -25,4 +25,5 @@ type EstoqueProduto struct {
 	Saldo     int32              `json:"saldo"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	Codigo    string             `json:"codigo"`
 }

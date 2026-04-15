@@ -20,6 +20,13 @@
     </div>
     } @else {
     <table mat-table [dataSource]="produtos" class="tabela">
+      <ng-container matColumnDef="codigo">
+        <th mat-header-cell *matHeaderCellDef>Codigo</th>
+        <td mat-cell *matCellDef="let produto">
+          <strong>{{ produto.codigo }}</strong>
+        </td>
+      </ng-container>
+
       <ng-container matColumnDef="nome">
         <th mat-header-cell *matHeaderCellDef>Nome</th>
         <td mat-cell *matCellDef="let produto">{{ produto.nome }}</td>
@@ -32,11 +39,6 @@
             {{ produto.saldo }} un.
           </span>
         </td>
-      </ng-container>
-
-      <ng-container matColumnDef="acoes">
-        <th mat-header-cell *matHeaderCellDef></th>
-        <td mat-cell *matCellDef="let produto"></td>
       </ng-container>
 
       <tr mat-header-row *matHeaderRowDef="colunas"></tr>

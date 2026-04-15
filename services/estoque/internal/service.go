@@ -25,7 +25,7 @@ func NewEstoqueService(repo EstoqueRepository) EstoqueService {
 }
 
 func (s *estoqueService) CriarProduto(ctx context.Context, req CriarProdutoRequest) (*ProdutoResponse, error) {
-	produto, err := s.repo.CriarProduto(ctx, req.Nome, req.Saldo)
+	produto, err := s.repo.CriarProduto(ctx, req.Codigo, req.Nome, req.Saldo)
 	if err != nil {
 		return nil, fmt.Errorf("service.CriarProduto: %w", err)
 	}
@@ -145,8 +145,9 @@ func mapProdutoResponse(p *db.EstoqueProduto) *ProdutoResponse {
 		p.ID.Bytes[10:16],
 	)
 	return &ProdutoResponse{
-		ID:    id,
-		Nome:  p.Nome,
-		Saldo: p.Saldo,
+		ID:     id,
+		Codigo: p.Codigo,
+		Nome:   p.Nome,
+		Saldo:  p.Saldo,
 	}
 }

@@ -1,14 +1,16 @@
 package internal
 
 type CriarProdutoRequest struct {
-	Nome  string `json:"nome"`
-	Saldo int32  `json:"saldo"`
+	Codigo string `json:"codigo"`
+	Nome   string `json:"nome"`
+	Saldo  int32  `json:"saldo"`
 }
 
 type ProdutoResponse struct {
-	ID    string `json:"id"`
-	Nome  string `json:"nome"`
-	Saldo int32  `json:"saldo"`
+	ID     string `json:"id"`
+	Codigo string `json:"codigo"`
+	Nome   string `json:"nome"`
+	Saldo  int32  `json:"saldo"`
 }
 
 type DebitarEstoqueRequest struct {

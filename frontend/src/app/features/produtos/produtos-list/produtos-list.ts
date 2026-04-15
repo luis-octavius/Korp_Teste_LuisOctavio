@@ -23,7 +23,7 @@ export class ProdutosListComponent implements OnInit {
 
   produtos: Produto[] = [];
   carregando = false;
-  colunas = ['nome', 'saldo', 'acoes'];
+  colunas = ['codigo', 'nome', 'saldo'];
 
   ngOnInit(): void {
     this.carregarProdutos();

@@ -29,7 +29,7 @@ func NewApp(ctx context.Context) (*App, error) {
 
 	// 2. Wire de dependências
 	queries := db.New(pool)
-	repo := NewFaturamentoRepository(queries)
+	repo := NewFaturamentoRepository(queries, pool)
 	service := NewFaturamentoService(repo)
 	handler := NewFaturamentoHandler(service)
 

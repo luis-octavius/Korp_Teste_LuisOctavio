@@ -68,21 +68,28 @@ func (s *faturamentoService) AdicionarItens(ctx context.Context, req AdicionarIt
 		return fmt.Errorf("service.AdicionarItens: nota %s não está aberta", req.NotaID)
 	}
 
+	itens := make([]db.AdicionarItemNotaParams, 0, len(req.Items))
 	for _, item := range req.Items {
+		if item.Quantidade <= 0 {
+			return fmt.Errorf("service.AdicionarItens: quantidade deve ser maior que zero para o produto %s", item.ProdutoID)
+		}
+
 		produtoUUID, err := parseUUID(item.ProdutoID)
 		if err != nil {
 			return fmt.Errorf("service.AdicionarItens: produto_id inválido %s: %w", item.ProdutoID, err)
 		}
 
-		_, err = s.repo.AdicionarItemNota(ctx, db.AdicionarItemNotaParams{
+		itens = append(itens, db.AdicionarItemNotaParams{
 			NotaID:     notaUUID,
 			ProdutoID:  produtoUUID,
 			Quantidade: item.Quantidade,
 		})
-		if err != nil {
-			return fmt.Errorf("service.AdicionarItens: erro ao adicionar item %s: %w", item.ProdutoID, err)
-		}
 	}
+
+	if err := s.repo.AdicionarItensNotaAtomico(ctx, itens); err != nil {
+		return fmt.Errorf("service.AdicionarItens: erro ao adicionar itens da nota: %w", err)
+	}
+
 	return nil
 }
 
@@ -191,6 +198,9 @@ func (s *faturamentoService) ImprimirNota(ctx context.Context, id string) (*Impr
 	items, err := s.repo.BuscarItemsNota(ctx, uuid)
 	if err != nil {
 		return nil, fmt.Errorf("service.ImprimirNota: erro ao buscar itens: %w", err)
+	}
+	if len(items) == 0 {
+		return nil, fmt.Errorf("service.ImprimirNota: nota sem itens não pode ser impressa")
 	}
 
 	// 4. Debita o estoque item a item, guardando os já debitados para rollback
