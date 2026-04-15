@@ -106,18 +106,12 @@ func (s *estoqueService) ReverterDebito(ctx context.Context, req ReverterDebitoR
 		return fmt.Errorf("service.ReverterDebito: nota_id inválido: %w", err)
 	}
 
-	// Busca o produto atual para somar o saldo de volta
-	produto, err := s.repo.BuscarProdutoPorId(ctx, uuid)
-	if err != nil {
-		return fmt.Errorf("service.ReverterDebito: produto não encontrado: %w", err)
+	// Aplica o crédito de volta no saldo. A query atômica de débito também funciona
+	// com valor negativo, resultando em incremento do saldo.
+	quantidadeReversao := -req.Quantidade
+	if _, err := s.repo.DebitarEstoqueAtomico(ctx, uuid, quantidadeReversao); err != nil {
+		return fmt.Errorf("service.ReverterDebito: falha ao reverter saldo do produto: %w", err)
 	}
-
-	// Recria o produto com saldo revertido via CriarProduto não faz sentido —
-	// precisamos de uma query de crédito. Por ora, usamos DebitarAtomico com valor negativo
-	// não é possível — então registramos via movimentação de ESTORNO e atualizamos manualmente.
-	// ATENÇÃO: idealmente você adicionaria uma query CreditarEstoque no sqlc.
-	// Como workaround, debitamos -quantidade (o banco aceita saldo + quantidade).
-	_ = produto // usado apenas para log futuro
 
 	_, err = s.repo.RegistrarMovimentacao(ctx, db.RegistrarMovimentacaoParams{
 		ProdutoID:     uuid,
