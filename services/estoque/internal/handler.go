@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
@@ -17,6 +18,9 @@ func NewEstoqueHandler(service EstoqueService) *EstoqueHandler {
 	return &EstoqueHandler{service: service}
 }
 
+// RegisterRoutes define as rotas do serviço de estoque,
+// incluindo endpoints para criar produtos, listar produtos,
+// buscar produto por ID, debitar estoque e reverter débito.
 func (h *EstoqueHandler) RegisterRoutes(r chi.Router) {
 	r.Get("/health", h.Health)
 
@@ -38,6 +42,8 @@ func (h *EstoqueHandler) Health(w http.ResponseWriter, r *http.Request) {
 }
 
 // POST /produtos
+// Endpoint para criar um novo produto no estoque,
+// utilizado durante a fase de cadastro de produtos.
 func (h *EstoqueHandler) CriarProduto(w http.ResponseWriter, r *http.Request) {
 	var req CriarProdutoRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -79,6 +85,9 @@ func (h *EstoqueHandler) ListarProdutos(w http.ResponseWriter, r *http.Request) 
 }
 
 // GET /produtos/{id}
+// Endpoint para buscar um produto por ID, utilizado
+// durante o processo de faturamento para validar a
+// existência do produto e obter seu saldo atual.
 func (h *EstoqueHandler) BuscarProduto(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
@@ -88,6 +97,10 @@ func (h *EstoqueHandler) BuscarProduto(w http.ResponseWriter, r *http.Request) {
 
 	produto, err := h.service.BuscarProduto(r.Context(), id)
 	if err != nil {
+		if isInputValidationError(err) {
+			respondError(w, http.StatusBadRequest, err.Error())
+			return
+		}
 		if errors.Is(err, pgx.ErrNoRows) {
 			respondError(w, http.StatusNotFound, "produto não encontrado")
 			return
@@ -100,6 +113,8 @@ func (h *EstoqueHandler) BuscarProduto(w http.ResponseWriter, r *http.Request) {
 }
 
 // POST /estoque/debitar
+// Endpoint para debitar o estoque de um produto,
+// utilizado durante o processo de faturamento.
 func (h *EstoqueHandler) DebitarEstoque(w http.ResponseWriter, r *http.Request) {
 	var req DebitarEstoqueRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -118,6 +133,10 @@ func (h *EstoqueHandler) DebitarEstoque(w http.ResponseWriter, r *http.Request) 
 
 	resp, err := h.service.DebitarEstoque(r.Context(), req)
 	if err != nil {
+		if isInputValidationError(err) {
+			respondError(w, http.StatusBadRequest, err.Error())
+			return
+		}
 		// Saldo insuficiente é um erro de negócio, não erro interno
 		respondError(w, http.StatusUnprocessableEntity, err.Error())
 		return
@@ -127,6 +146,8 @@ func (h *EstoqueHandler) DebitarEstoque(w http.ResponseWriter, r *http.Request) 
 }
 
 // POST /estoque/reverter
+// Endpoint para reverter um débito de estoque,
+// utilizado em casos de estorno de nota ou cancelamento de pedido.
 func (h *EstoqueHandler) ReverterDebito(w http.ResponseWriter, r *http.Request) {
 	var req ReverterDebitoRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -144,9 +165,22 @@ func (h *EstoqueHandler) ReverterDebito(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := h.service.ReverterDebito(r.Context(), req); err != nil {
+		if isInputValidationError(err) {
+			respondError(w, http.StatusBadRequest, err.Error())
+			return
+		}
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	respondJSON(w, http.StatusOK, map[string]string{"mensagem": "estorno realizado com sucesso"})
+}
+
+// isInputValidationError verifica se o erro é relacionado
+// a validação de entrada, como campos obrigatórios ou formatos inválidos.
+func isInputValidationError(err error) bool {
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "inválido") ||
+		strings.Contains(msg, "invalido") ||
+		strings.Contains(msg, "deve ser maior que zero")
 }

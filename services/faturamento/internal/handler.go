@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
@@ -17,6 +18,9 @@ func NewFaturamentoHandler(service FaturamentoService) *FaturamentoHandler {
 	return &FaturamentoHandler{service: service}
 }
 
+// RegisterRoutes define as rotas do serviço de faturamento,
+// incluindo endpoints para criar notas, listar notas, buscar nota por ID,
+// adicionar itens a uma nota e imprimir a nota.
 func (h *FaturamentoHandler) RegisterRoutes(r chi.Router) {
 	r.Get("/health", h.Health)
 
@@ -57,6 +61,9 @@ func (h *FaturamentoHandler) ListarNotas(w http.ResponseWriter, r *http.Request)
 }
 
 // GET /notas/{id}
+// Endpoint para buscar uma nota por ID,
+// utilizado durante o processo de faturamento para
+// consultar o status da nota e seus detalhes.
 func (h *FaturamentoHandler) BuscarNota(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
@@ -66,6 +73,10 @@ func (h *FaturamentoHandler) BuscarNota(w http.ResponseWriter, r *http.Request) 
 
 	nota, err := h.service.BuscarNota(r.Context(), id)
 	if err != nil {
+		if isInputValidationError(err) {
+			respondError(w, http.StatusBadRequest, err.Error())
+			return
+		}
 		if errors.Is(err, pgx.ErrNoRows) {
 			respondError(w, http.StatusNotFound, "nota não encontrada")
 			return
@@ -78,6 +89,9 @@ func (h *FaturamentoHandler) BuscarNota(w http.ResponseWriter, r *http.Request) 
 }
 
 // POST /notas/{id}/itens
+// Endpoint para adicionar itens a uma nota existente,
+// utilizado durante o processo de faturamento para compor a nota
+// com os produtos e quantidades desejados.
 func (h *FaturamentoHandler) AdicionarItens(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
@@ -99,6 +113,14 @@ func (h *FaturamentoHandler) AdicionarItens(w http.ResponseWriter, r *http.Reque
 	req.NotaID = id
 
 	if err := h.service.AdicionarItens(r.Context(), req); err != nil {
+		if isInputValidationError(err) {
+			respondError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		if errors.Is(err, pgx.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "nota não encontrada")
+			return
+		}
 		// Nota fechada é erro de negócio
 		respondError(w, http.StatusUnprocessableEntity, err.Error())
 		return
@@ -108,6 +130,7 @@ func (h *FaturamentoHandler) AdicionarItens(w http.ResponseWriter, r *http.Reque
 }
 
 // POST /notas/{id}/imprimir
+// Endpoint para fechar a nota e gerar o documento fiscal,
 func (h *FaturamentoHandler) ImprimirNota(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
@@ -117,6 +140,10 @@ func (h *FaturamentoHandler) ImprimirNota(w http.ResponseWriter, r *http.Request
 
 	nota, err := h.service.ImprimirNota(r.Context(), id)
 	if err != nil {
+		if isInputValidationError(err) {
+			respondError(w, http.StatusBadRequest, err.Error())
+			return
+		}
 		if errors.Is(err, pgx.ErrNoRows) {
 			respondError(w, http.StatusNotFound, "nota não encontrada")
 			return
@@ -127,4 +154,13 @@ func (h *FaturamentoHandler) ImprimirNota(w http.ResponseWriter, r *http.Request
 	}
 
 	respondJSON(w, http.StatusOK, nota)
+}
+
+// isInputValidationError verifica se o erro é relacionado
+// a validação de entrada, como campos obrigatórios ou formatos inválidos.
+func isInputValidationError(err error) bool {
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "inválido") ||
+		strings.Contains(msg, "invalido") ||
+		strings.Contains(msg, "deve ser maior que zero")
 }
