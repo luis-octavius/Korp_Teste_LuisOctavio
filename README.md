@@ -1,6 +1,6 @@
-# Korp_Teste_Luis_Octavio
+# Sistemas de Emissão de Notas Fiscais
 
-Sistema de emissão de Notas Fiscais desenvolvido como teste técnico para a Korp ERP (Viasoft).
+Sistema de emissão de Notas Fiscais desenvolvido como teste técnico. 
 
 ## Arquitetura  
 
